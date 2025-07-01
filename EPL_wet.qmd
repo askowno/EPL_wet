@@ -1,0 +1,391 @@
+---
+title: "EPL_wet"
+format: html
+---
+
+Preparation
+
+```{r}
+# Add packages: 
+library(sf)
+library(tidyverse)
+
+# Add data
+
+wetlands <-st_read("C:/Users/skownoa/Dropbox/NBAwork/Wetlands/freshwater.gdb", "NBA_wet_test") 
+pa <- st_read("C:/Users/skownoa/Dropbox/NBAwork/NLC_change/NLC_Change.gdb", layer = "SANBI_PA_2024Q4_Mar2025") 
+
+#ensure it uses proj =  wgs84 aea cm 25 -24 -33
+st_crs(wetlands)
+st_crs(pa)
+```
+
+Clean up input data
+
+```{r}
+# Protected Areas - Subset PA data for 2018 and 2024 using DECL_YEAR, excluding properties degazetted using UNDECL_YEA. In preparation for this selection DECL_YEAR is set to 0 when unknown, and UNDCL_YEA is set to 9999 for those PAs that have never been degazetted.
+
+pa2018 <- subset(pa, DECL_YEAR <  2019 & UNDECL_YEA >2018)
+pa2024 <- subset(pa, DECL_YEAR <  2025 & UNDECL_YEA >2024)
+
+# Wetlands - cleanup data 
+
+wet <- wetlands %>%
+  # make a type column
+  mutate(TYPE = paste(T_BIOREGIO, HGM_4A, sep = " - "))%>%
+  # clean up tiny types and remove estuaries
+  filter(T_BIOREGIO != "Estuary") %>%
+  # re code blank (not blank but one space actually) PES 2022 and 2018 scores to "Data Deficient" [DD] 
+  mutate(EC22ALL = if_else(EC22ALL == " ", "DD", EC22ALL)) %>%
+  mutate(EC18ALL = if_else(EC18ALL == " ", "DD", EC18ALL)) %>%
+  filter(Shape_Area > 10)
+  
+# make a simple table of TYPE and HGM to join with results later 
+  type_hgm_tb <- wet %>% select(TYPE, HGM_4A) %>% distinct(TYPE, .keep_all = TRUE) %>% st_drop_geometry()
+
+
+```
+
+Spatial Analysis
+
+```{r}
+# Intersect PA with Wetlands  at each time point
+pa18_wet <- st_intersection(wet, pa2018)
+
+pa18_wet <- pa18_wet %>%
+  mutate(feature_area18pa = as.numeric(st_area(.))) %>%
+   group_by(fid_1) %>%
+  summarise(fid_area18pa = sum((as.numeric(feature_area18pa))), 
+            .groups = "drop") %>%
+  st_drop_geometry()
+  
+pa24_wet <- st_intersection(wet, pa2024)
+pa24_wet <- pa24_wet %>%
+  mutate(feature_area24pa = as.numeric(st_area(.))) %>%
+   group_by(fid_1) %>%
+  summarise(fid_area24pa = sum((as.numeric(feature_area24pa))), 
+            .groups = "drop") %>%
+  st_drop_geometry()
+
+# Join the PA length calculations to the wetland  data (using fid_1) and then group by wetland  type and summarise by Condition class- clean up mismatched PES (Foreign, estuary and Data Defic)
+options(scipen = 999)
+
+wet_tb <- wet %>%
+  st_drop_geometry() %>%
+  left_join(pa24_wet, by = "fid_1") %>%
+  left_join(pa18_wet, by = "fid_1") %>%
+  mutate(across(c(fid_area24pa, fid_area18pa), ~ replace_na(.x, 0)))
+    
+## Note these data extend outside of SA and into estuaries - these segements need to be filtered out when doing computations. 
+
+```
+
+Summarise data per type
+
+```{r}
+
+#summarise by wetland  type including extent per type per condition class - this allows for inclusion of condition in the EPL formula
+options(scipen = 999)
+
+# overall type summary
+wet_type_18 <- wet_tb %>%
+    group_by(TYPE, EC18ALL) %>%
+  summarise(extent = sum(as.numeric(Shape_Area), na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = EC18ALL, values_from = extent, values_fill = list(extent = 0))  %>%
+  mutate(tot_ext18 = rowSums(across(c(A, B, C, D, E, F, DD))))
+
+wet_type_24 <- wet_tb %>%
+    group_by(TYPE, EC22ALL) %>%
+  summarise(extent = sum(as.numeric(Shape_Area), na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = EC22ALL, values_from = extent, values_fill = list(extent = 0))  %>%
+  mutate(tot_ext24 = rowSums(across(c(A, B, C, D, E, F, DD))))
+
+# PA x type summary 
+ wet_type_pa18 <- wet_tb %>%
+    group_by(TYPE, EC18ALL) %>%
+  summarise(extent = sum(as.numeric(fid_area18pa), na.rm = TRUE)) %>%
+  ungroup()  %>%
+  pivot_wider(names_from = EC18ALL, values_from = extent,values_fill = list(extent = 0))  %>%
+  mutate(ext_pa18 = rowSums(across(c(A, B, C, D, E, F, DD))))
+
+ wet_type_pa24 <- wet_tb %>%
+    group_by(TYPE, EC22ALL) %>%
+     summarise(extent = sum(as.numeric(fid_area24pa), na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = EC22ALL, values_from = extent, values_fill = list(extent = 0)) %>%
+  mutate(ext_pa24 = rowSums(across(c(A, B, C, D, E, F, DD))))
+  
+ # Join the three tables above - this makes a single table in which all the required metrics can be found to compute EPL (note tot ext 18 and to ext 24 are identical )
+ 
+ wet_type_metrics <- wet_type_18 %>%
+   select(TYPE, tot_ext18) %>%
+   left_join(wet_type_pa18, by = "TYPE") %>%
+   rename(A18=A, B18=B, C18=C, D18=D, E18=E, F18=F, DD18 = DD) %>%
+   left_join(wet_type_pa24, by = "TYPE") %>%
+   mutate(prp_pa18 = ext_pa18/tot_ext18) %>%
+   mutate(prp_pa18_ab = (A18 + B18 + DD18)/tot_ext18) %>%
+   mutate(prp_pa18_model = (A18 + B18  + DD18 + C18 + (0.5*D18) + (0.3*E18) + (0.1*F18))/tot_ext18) %>%
+   mutate(EPL18_all = case_when( prp_pa18 >= 0.3 ~ "WP", 
+                                 prp_pa18 >= 0.15 ~ "MP",
+                                 prp_pa18 >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>% 
+   mutate(EPL18_ab = case_when( prp_pa18_ab >= 0.3 ~ "WP", 
+                                 prp_pa18_ab >= 0.15 ~ "MP",
+                                 prp_pa18_ab >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>% 
+   mutate(EPL18_model = case_when( prp_pa18_model >= 0.3 ~ "WP", 
+                                 prp_pa18_model >= 0.15 ~ "MP",
+                                 prp_pa18_model >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>%
+   mutate(prp_pa24 = ext_pa24/tot_ext18) %>%
+   mutate(prp_pa24_ab = (A + B + DD)/tot_ext18) %>%
+   mutate(prp_pa24_model = (A + B  + DD + (0.5*C) + (0.3*D) + (0.1*E))/tot_ext18) %>%
+   mutate(EPL24_all = case_when( prp_pa24 >= 0.3 ~ "WP", 
+                                 prp_pa24 >= 0.15 ~ "MP",
+                                 prp_pa24 >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>% 
+   mutate(EPL24_ab = case_when( prp_pa24_ab >= 0.3 ~ "WP", 
+                                 prp_pa24_ab >= 0.15 ~ "MP",
+                                 prp_pa24_ab >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>% 
+   mutate(EPL24_model = case_when( prp_pa24_model >= 0.3 ~ "WP", 
+                                 prp_pa24_model >= 0.15 ~ "MP",
+                                 prp_pa24_model >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>%
+    # add in HGM type
+   left_join(type_hgm_tb, by = "TYPE") %>%
+   mutate(hgm_simple = case_when( HGM_4A == "Channelled valley-bottom" ~ "Valley-bottom",
+                                  HGM_4A == "Unchannelled valley-bottom" ~ "Valley-bottom",
+                                  HGM_4A == "Valley-bottom" ~ "Valley-bottom",
+                                  HGM_4A == "River" ~ "Valley-bottom",
+                                  HGM_4A == "Wetland flat" ~ "Seep",
+                                  TRUE ~ HGM_4A))
+ 
+  # export a csv of results - Condition and EPL per river type 2018 and 2024
+   write.csv(wet_type_metrics, file = "outputs/epl_wet_metrics_per_type.csv")
+```
+
+Output tables
+
+```{r}
+# 2018 summaries
+# make summary counts of EPL categories per HGM
+ epl18ab_sum <- wet_type_metrics %>%
+    group_by(EPL18_ab, hgm_simple) %>%
+  summarise(count = n(),.groups = 'drop') %>%
+  pivot_wider(names_from = EPL18_ab, 
+              values_from = count, values_fill = 0) %>%
+  relocate(WP, .before = MP)%>%
+  relocate(NP, .after = PP) %>%
+   # Add row-wise TOTAL
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.numeric)))) %>%
+  ungroup() %>%
+  # Add TOTAL row (column-wise sums)
+  bind_rows(summarise(., hgm_simple = "Total", across(where(is.numeric), sum))) %>%
+  # Add EPLindex
+  mutate(EPLI = ((WP*3)+(MP*2)+(PP*1)+(NP*0))/((WP+MP+PP+NP)*3)) %>%
+    mutate(hgm_simple = factor(hgm_simple, levels = c("Total", "Floodplain", "Valley-bottom" , "Depression", "Seep"))) %>% ## ggplot plots inverted factors!
+   arrange(hgm_simple)
+ 
+ # export a csv of results - COUNT of EPL 18 per slope zone
+ write.csv(epl18ab_sum, file = "outputs/epl18_wet_sum_count.csv") 
+ 
+  # make summary of extent of EPL
+ epl18ab_sum_ext <- wet_type_metrics %>%
+    group_by(EPL18_ab, hgm_simple) %>%
+  summarise(extent = round(sum(tot_ext18)/1000000, 0),.groups = 'drop') %>%
+  pivot_wider(names_from = EPL18_ab, 
+              values_from = extent, values_fill = 0) %>%
+  relocate(WP, .before = MP)%>%
+  relocate(NP, .after = PP) %>%
+   # Add row-wise TOTAL
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.numeric)))) %>%
+  ungroup() %>%
+  # Add TOTAL row (column-wise sums)
+  bind_rows(summarise(., hgm_simple = "Total", across(where(is.numeric), sum))) %>%
+    mutate(hgm_simple = factor(hgm_simple, levels = c("Total", "Floodplain", "Valley-bottom" , "Depression", "Seep"))) %>% ## ggplot plots inverted factors!
+   arrange(hgm_simple)
+ 
+ # export a csv of results - EXTENT (km) of EPL 18 per slope zone
+  write.csv(epl18ab_sum_ext, file = "outputs/epl18_wet_sum_ext.csv")
+
+  # Convert extent per epl category to proportion 
+  epl18ab_sum_prpext <- epl18ab_sum_ext %>%
+  filter(hgm_simple != "Total") %>%
+  mutate(across(c(WP, MP, PP, NP), ~ round(.x / Total, 3))) %>%
+  select(hgm_simple, WP, MP, PP, NP)
+  
+  # export a csv of results - PROPORTIONAL EXTENT  (km) of EPL 18 per slope zone
+   write.csv(epl18ab_sum_prpext, file = "outputs/epl18_wet_sum_prp.csv")
+ 
+  # 2024 summaries
+  # make summary counts of EPL
+  epl24ab_sum <- wet_type_metrics %>%
+    group_by(EPL24_ab, hgm_simple) %>%
+  summarise(count = n(),.groups = 'drop') %>%
+  pivot_wider(names_from = EPL24_ab, 
+              values_from = count, values_fill = 0) %>%
+  relocate(WP, .before = MP)%>%
+  relocate(NP, .after = PP) %>%
+   # Add row-wise TOTAL
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.numeric)))) %>%
+  ungroup() %>%
+  # Add TOTAL row (column-wise sums)
+  bind_rows(summarise(., hgm_simple = "Total", across(where(is.numeric), sum))) %>%
+  # Add EPLindex
+  mutate(EPLI = ((WP*3)+(MP*2)+(PP*1)+(NP*0))/((WP+MP+PP+NP)*3)) %>%
+     mutate(hgm_simple = factor(hgm_simple, levels = c("Total", "Floodplain", "Valley-bottom" , "Depression", "Seep"))) %>% ## ggplot plots inverted factors!
+   arrange(hgm_simple)
+  
+ # export a csv of results - COUNT of EPL 18 per slope zone
+ write.csv(epl24ab_sum, file = "outputs/epl24_wet_sum_count.csv") 
+ 
+ # make summary of extent of EPL
+ epl24ab_sum_ext <- wet_type_metrics %>%
+    group_by(EPL24_ab, hgm_simple) %>%
+  summarise(extent = round(sum(tot_ext18)/1000000, 0),.groups = 'drop') %>%
+  pivot_wider(names_from = EPL24_ab, 
+              values_from = extent, values_fill = 0) %>%
+  relocate(WP, .before = MP)%>%
+  relocate(NP, .after = PP) %>%
+   # Add row-wise TOTAL
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.numeric)))) %>%
+  ungroup() %>%
+  # Add TOTAL row (column-wise sums)
+  bind_rows(summarise(., hgm_simple = "Total", across(where(is.numeric), sum))) %>%
+    mutate(hgm_simple = factor(hgm_simple, levels = c("Total", "Floodplain", "Valley-bottom" , "Depression", "Seep"))) %>% ## ggplot plots inverted factors!
+   arrange(hgm_simple)
+ 
+ # export a csv of results - EXTENT (km) of EPL 18 per slope zone
+  write.csv(epl24ab_sum_ext, file = "outputs/epl24_wet_sum_ext.csv")
+ 
+ epl24ab_sum_prpext <- epl24ab_sum_ext %>%
+  filter(hgm_simple != "Total") %>%
+  mutate(across(c(WP, MP, PP, NP), ~ round(.x / Total, 3))) %>%
+  select(hgm_simple, WP, MP, PP, NP)
+ 
+ # export a csv of results - PROPORTIONAL EXTENT  (km) of EPL 18 per slope zone
+   write.csv(epl24ab_sum_prpext, file = "outputs/epl24_wet_sum_prp.csv")
+```
+
+#### **Make graphs for NBA**
+
+```{r}
+
+# load nbaR package : first run this in console devtools::install_github("SANBI-NBA/nbaR") 
+library(nbaR)
+
+# Use NBA package to make EPL graph (need high res output for booklet)
+EPL24count <- epl24ab_sum %>%
+    rename(`Well Protected` = WP, 
+           `Moderately Protected` = MP, 
+           `Poorly Protected` = PP, 
+           `Not Protected` = NP ) # %>%
+  # select(-...1) # required if importing from CSV
+ 
+epl24_bar_plot_count <- nba_plot(EPL24count,
+                  `hgm_simple`,
+                  2:5,
+                 CHRT = "bar",
+                 NUM = TRUE,
+                 LAB = "Percentage of ecosystem types",
+                SAVE = NULL)
+
+epl24_bar_plot_count
+
+#export the graph
+ggsave(
+  filename = "outputs/epl24_wet_bar_plot_count.jpeg", # File name
+  plot = epl24_bar_plot_count,                  # Plot object
+  device = "jpeg",                        # File format
+  width = 16, height = 12, units = "cm",   # Dimensions
+  dpi = 300                               # Resolution
+)
+
+# graphs for extent per slope zone per epl category
+
+EPL24ext <- epl24ab_sum_ext %>%
+    rename(`Well Protected` = WP, 
+           `Moderately Protected` = MP, 
+           `Poorly Protected` = PP, 
+           `Not Protected` = NP ) # %>%
+  # select(-...1) # required if importing from CSV
+ 
+epl24_bar_plot_ext <- nba_plot(EPL24ext,
+                  `hgm_simple`,
+                  2:5,
+                 CHRT = "bar",
+                 NUM = FALSE,
+                 LAB = "Percentage of ecosystem extent",
+                SAVE = NULL)
+
+epl24_bar_plot_ext
+
+#export the graph
+ggsave(
+  filename = "outputs/epl24_wet_bar_plot_ext.jpeg", # File name
+  plot = epl24_bar_plot_ext,                   # Plot object
+  device = "jpeg",                        # File format
+  width = 16, height = 12, units = "cm",   # Dimensions
+  dpi = 300                               # Resolution
+)
+
+# Make a line plot of EPL Index using 2018 and 2014 timepoints - request Natasha to impve this or add to package.
+
+EPLI <- epl24ab_sum %>%
+  select(hgm_simple, EPLI) %>% 
+  rename(EPLI24 = EPLI) %>%
+   left_join(epl18ab_sum, by ="hgm_simple") %>%
+   rename(EPLI18 = EPLI) %>%
+   rename(HGMzone = hgm_simple) %>%
+  select(HGMzone,EPLI18, EPLI24) %>%
+  pivot_longer(cols = c(2,3), names_to = "Year", values_to = "EPLI") %>%
+    mutate(Year = case_when(
+    Year == "EPLI18" ~ "2018",
+    Year == "EPLI24" ~ "2024",
+    TRUE ~ Year
+  ))
+  
+ epli_line_plot <- ggplot(EPLI, aes(x = Year, y = EPLI, group = HGMzone)) +
+  geom_line(aes(linetype = HGMzone, color = HGMzone), linewidth = 1.2) +
+  geom_point(aes(color = HGMzone), size = 2) +
+  theme_minimal() +
+  labs(x = "Year", y = "EPLI") +
+  scale_x_discrete(limits = c("2018", "2024")) +
+  scale_color_manual(values = c(
+    "Total" = "black",
+    "Floodplain" = "blue",
+    "Valley-bottom" = "darkgreen",
+    "Depression" = "brown",
+    "Seep" = "orange"
+  )) +
+#  scale_linetype_manual(values = c(
+  #   "Total" = "solid",
+  #   "Lowland river" = "dotdash",
+  #   "Lower foothill" = "dashed",
+  #   "Upper foothill" = "dashed",
+  #   "Mountain stream" = "dotted"
+  # )) +
+  coord_cartesian(ylim = c(0.1, 0.5)) +
+    guides(color = guide_legend(reverse = TRUE),
+         linetype = guide_legend(reverse = TRUE)) +
+  theme(legend.title = element_blank())
+  
+   
+  epli_line_plot
+  
+  #export the graph
+ggsave(
+  filename = "outputs/epli_riv_line_plot.jpeg", # File name
+  plot = epli_line_plot,                   # Plot object
+  device = "jpeg",                        # File format
+  width = 16, height = 12, units = "cm",   # Dimensions
+  dpi = 300                               # Resolution
+)
+```
