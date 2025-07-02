@@ -3,7 +3,7 @@ title: "EPL_wet"
 format: html
 ---
 
-Preparation
+#### Set up the Project and import the data 
 
 ```{r}
 # Add packages: 
@@ -12,18 +12,19 @@ library(tidyverse)
 
 # Add data
 
-wetlands <-st_read("C:/Users/skownoa/Dropbox/NBAwork/Wetlands/freshwater.gdb", "NBA_wet_test") 
+wetlands <-st_read("C:/Users/skownoa/Dropbox/NBAwork/Wetlands/NBA_wetl_TFonly_20250701.shp") 
 pa <- st_read("C:/Users/skownoa/Dropbox/NBAwork/NLC_change/NLC_Change.gdb", layer = "SANBI_PA_2024Q4_Mar2025") 
 
 #ensure it uses proj =  wgs84 aea cm 25 -24 -33
-st_crs(wetlands)
-st_crs(pa)
+# st_crs(wetlands)
+# st_crs(pa)
 ```
 
-Clean up input data
+#### Clean up input data
 
 ```{r}
 # Protected Areas - Subset PA data for 2018 and 2024 using DECL_YEAR, excluding properties degazetted using UNDECL_YEA. In preparation for this selection DECL_YEAR is set to 0 when unknown, and UNDCL_YEA is set to 9999 for those PAs that have never been degazetted.
+options(scipen = 999)
 
 pa2018 <- subset(pa, DECL_YEAR <  2019 & UNDECL_YEA >2018)
 pa2024 <- subset(pa, DECL_YEAR <  2025 & UNDECL_YEA >2024)
@@ -31,22 +32,28 @@ pa2024 <- subset(pa, DECL_YEAR <  2025 & UNDECL_YEA >2024)
 # Wetlands - cleanup data 
 
 wet <- wetlands %>%
-  # make a type column
-  mutate(TYPE = paste(T_BIOREGIO, HGM_4A, sep = " - "))%>%
-  # clean up tiny types and remove estuaries
-  filter(T_BIOREGIO != "Estuary") %>%
-  # re code blank (not blank but one space actually) PES 2022 and 2018 scores to "Data Deficient" [DD] 
-  mutate(EC22ALL = if_else(EC22ALL == " ", "DD", EC22ALL)) %>%
-  mutate(EC18ALL = if_else(EC18ALL == " ", "DD", EC18ALL)) %>%
-  filter(Shape_Area > 10)
+  # make a type column by simplifying the HGM units and concat with bioregion
+  filter(HGM_type != "River") %>%
+  mutate(hgm_simple = case_when(  HGM_type == "Channelled valley-bottom" ~ "Valley-bottom",
+                                  HGM_type == "Unchannelled valley-bottom" ~ "Valley-bottom",
+                                  HGM_type == "Valley-bottom" ~ "Valley-bottom",
+                                  HGM_type == "Wetland flat" ~ "Depression",
+                                  TRUE ~ HGM_type)) %>%
+  mutate(TYPE = paste0(Bioregion, " (", hgm_simple, ")")) %>%
+  # recode blank (not blank but one space actually ) PES 2022 scores to "Data Deficient" code = DD
+  mutate(EC22ALL = if_else(is.na(EC22ALL), "DD", EC22ALL)) %>%
+  mutate(EC18ALL = if_else(is.na(EC18ALL), "DD", EC18ALL)) %>%
+  filter(Area > 10)
+  
+# make a table to work with 
+  wet_tb <- st_drop_geometry(wet)
   
 # make a simple table of TYPE and HGM to join with results later 
-  type_hgm_tb <- wet %>% select(TYPE, HGM_4A) %>% distinct(TYPE, .keep_all = TRUE) %>% st_drop_geometry()
-
+  type_hgm_tb <- wet_tb %>% select(TYPE, hgm_simple) %>% distinct(TYPE, .keep_all = TRUE)
 
 ```
 
-Spatial Analysis
+#### Spatial Analysis
 
 ```{r}
 # Intersect PA with Wetlands  at each time point
@@ -80,7 +87,7 @@ wet_tb <- wet %>%
 
 ```
 
-Summarise data per type
+#### Summarise data per type
 
 ```{r}
 
@@ -90,14 +97,14 @@ options(scipen = 999)
 # overall type summary
 wet_type_18 <- wet_tb %>%
     group_by(TYPE, EC18ALL) %>%
-  summarise(extent = sum(as.numeric(Shape_Area), na.rm = TRUE)) %>%
+  summarise(extent = sum(as.numeric(Area), na.rm = TRUE)) %>%
   ungroup() %>%
   pivot_wider(names_from = EC18ALL, values_from = extent, values_fill = list(extent = 0))  %>%
   mutate(tot_ext18 = rowSums(across(c(A, B, C, D, E, F, DD))))
 
 wet_type_24 <- wet_tb %>%
     group_by(TYPE, EC22ALL) %>%
-  summarise(extent = sum(as.numeric(Shape_Area), na.rm = TRUE)) %>%
+  summarise(extent = sum(as.numeric(Area), na.rm = TRUE)) %>%
   ungroup() %>%
   pivot_wider(names_from = EC22ALL, values_from = extent, values_fill = list(extent = 0))  %>%
   mutate(tot_ext24 = rowSums(across(c(A, B, C, D, E, F, DD))))
@@ -153,21 +160,16 @@ wet_type_24 <- wet_tb %>%
    mutate(EPL24_model = case_when( prp_pa24_model >= 0.3 ~ "WP", 
                                  prp_pa24_model >= 0.15 ~ "MP",
                                  prp_pa24_model >= 0.015 ~ "PP",
-                                 TRUE ~ "NP")) %>%
-    # add in HGM type
-   left_join(type_hgm_tb, by = "TYPE") %>%
-   mutate(hgm_simple = case_when( HGM_4A == "Channelled valley-bottom" ~ "Valley-bottom",
-                                  HGM_4A == "Unchannelled valley-bottom" ~ "Valley-bottom",
-                                  HGM_4A == "Valley-bottom" ~ "Valley-bottom",
-                                  HGM_4A == "River" ~ "Valley-bottom",
-                                  HGM_4A == "Wetland flat" ~ "Seep",
-                                  TRUE ~ HGM_4A))
+                                 TRUE ~ "NP"))   %>%
+ # add in HGM type
+   left_join(type_hgm_tb, by = "TYPE")
+    
  
   # export a csv of results - Condition and EPL per river type 2018 and 2024
    write.csv(wet_type_metrics, file = "outputs/epl_wet_metrics_per_type.csv")
 ```
 
-Output tables
+#### Output tables
 
 ```{r}
 # 2018 summaries
