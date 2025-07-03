@@ -3,7 +3,7 @@ title: "EPL_wet"
 format: html
 ---
 
-#### Set up the Project and import the data 
+#### Set up the Project and import the data
 
 ```{r}
 # Add packages: 
