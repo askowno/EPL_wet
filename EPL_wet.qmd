@@ -146,6 +146,11 @@ wet_type_24 <- wet_tb %>%
                                  prp_pa18_model >= 0.15 ~ "MP",
                                  prp_pa18_model >= 0.015 ~ "PP",
                                  TRUE ~ "NP")) %>%
+    #this combines aquatic rule that WP must be ab with the model for repr for MP PP NP
+   mutate(EPL18_wp_ab_model = case_when( prp_pa18_ab >= 0.3 ~ "WP", 
+                                 prp_pa18_model >= 0.15 ~ "MP",
+                                 prp_pa18_model >= 0.015 ~ "PP",
+                                 TRUE ~ "NP")) %>%
    mutate(prp_pa24 = ext_pa24/tot_ext18) %>%
    mutate(prp_pa24_ab = (A + B + DD)/tot_ext18) %>%
    mutate(prp_pa24_model = (A + B  + DD + (0.5*C) + (0.3*D) + (0.1*E))/tot_ext18) %>%
@@ -158,6 +163,11 @@ wet_type_24 <- wet_tb %>%
                                  prp_pa24_ab >= 0.015 ~ "PP",
                                  TRUE ~ "NP")) %>% 
    mutate(EPL24_model = case_when( prp_pa24_model >= 0.3 ~ "WP", 
+                                 prp_pa24_model >= 0.15 ~ "MP",
+                                 prp_pa24_model >= 0.015 ~ "PP",
+                                 TRUE ~ "NP"))   %>%
+    #this combines aquatic rule that WP must be ab with the model for repr for MP PP NP
+   mutate(EPL24_wp_ab_model = case_when( prp_pa24_ab >= 0.3 ~ "WP", 
                                  prp_pa24_model >= 0.15 ~ "MP",
                                  prp_pa24_model >= 0.015 ~ "PP",
                                  TRUE ~ "NP"))   %>%
@@ -174,10 +184,10 @@ wet_type_24 <- wet_tb %>%
 ```{r}
 # 2018 summaries
 # make summary counts of EPL categories per HGM
- epl18ab_sum <- wet_type_metrics %>%
-    group_by(EPL18_ab, hgm_simple) %>%
+ epl18_sum <- wet_type_metrics %>%
+    group_by(EPL18_wp_ab_model, hgm_simple) %>%
   summarise(count = n(),.groups = 'drop') %>%
-  pivot_wider(names_from = EPL18_ab, 
+  pivot_wider(names_from = EPL18_wp_ab_model, 
               values_from = count, values_fill = 0) %>%
   relocate(WP, .before = MP)%>%
   relocate(NP, .after = PP) %>%
@@ -193,13 +203,13 @@ wet_type_24 <- wet_tb %>%
    arrange(hgm_simple)
  
  # export a csv of results - COUNT of EPL 18 per slope zone
- write.csv(epl18ab_sum, file = "outputs/epl18_wet_sum_count.csv") 
+ write.csv(epl18_sum, file = "outputs/epl18_wet_sum_count.csv") 
  
   # make summary of extent of EPL
- epl18ab_sum_ext <- wet_type_metrics %>%
-    group_by(EPL18_ab, hgm_simple) %>%
+ epl18_sum_ext <- wet_type_metrics %>%
+    group_by(EPL18_wp_ab_model, hgm_simple) %>%
   summarise(extent = round(sum(tot_ext18)/1000000, 0),.groups = 'drop') %>%
-  pivot_wider(names_from = EPL18_ab, 
+  pivot_wider(names_from = EPL18_wp_ab_model, 
               values_from = extent, values_fill = 0) %>%
   relocate(WP, .before = MP)%>%
   relocate(NP, .after = PP) %>%
@@ -213,23 +223,23 @@ wet_type_24 <- wet_tb %>%
    arrange(hgm_simple)
  
  # export a csv of results - EXTENT (km) of EPL 18 per slope zone
-  write.csv(epl18ab_sum_ext, file = "outputs/epl18_wet_sum_ext.csv")
+  write.csv(epl18_sum_ext, file = "outputs/epl18_wet_sum_ext.csv")
 
   # Convert extent per epl category to proportion 
-  epl18ab_sum_prpext <- epl18ab_sum_ext %>%
+  epl18_sum_prpext <- epl18_sum_ext %>%
   filter(hgm_simple != "Total") %>%
   mutate(across(c(WP, MP, PP, NP), ~ round(.x / Total, 3))) %>%
   select(hgm_simple, WP, MP, PP, NP)
   
   # export a csv of results - PROPORTIONAL EXTENT  (km) of EPL 18 per slope zone
-   write.csv(epl18ab_sum_prpext, file = "outputs/epl18_wet_sum_prp.csv")
+   write.csv(epl18_sum_prpext, file = "outputs/epl18_wet_sum_prp.csv")
  
   # 2024 summaries
   # make summary counts of EPL
-  epl24ab_sum <- wet_type_metrics %>%
-    group_by(EPL24_ab, hgm_simple) %>%
+  epl24_sum <- wet_type_metrics %>%
+    group_by(EPL24_wp_ab_model, hgm_simple) %>%
   summarise(count = n(),.groups = 'drop') %>%
-  pivot_wider(names_from = EPL24_ab, 
+  pivot_wider(names_from = EPL24_wp_ab_model, 
               values_from = count, values_fill = 0) %>%
   relocate(WP, .before = MP)%>%
   relocate(NP, .after = PP) %>%
@@ -245,13 +255,13 @@ wet_type_24 <- wet_tb %>%
    arrange(hgm_simple)
   
  # export a csv of results - COUNT of EPL 18 per slope zone
- write.csv(epl24ab_sum, file = "outputs/epl24_wet_sum_count.csv") 
+ write.csv(epl24_sum, file = "outputs/epl24_wet_sum_count.csv") 
  
  # make summary of extent of EPL
- epl24ab_sum_ext <- wet_type_metrics %>%
-    group_by(EPL24_ab, hgm_simple) %>%
+ epl24_sum_ext <- wet_type_metrics %>%
+    group_by(EPL24_wp_ab_model, hgm_simple) %>%
   summarise(extent = round(sum(tot_ext18)/1000000, 0),.groups = 'drop') %>%
-  pivot_wider(names_from = EPL24_ab, 
+  pivot_wider(names_from = EPL24_wp_ab_model, 
               values_from = extent, values_fill = 0) %>%
   relocate(WP, .before = MP)%>%
   relocate(NP, .after = PP) %>%
@@ -265,15 +275,15 @@ wet_type_24 <- wet_tb %>%
    arrange(hgm_simple)
  
  # export a csv of results - EXTENT (km) of EPL 18 per slope zone
-  write.csv(epl24ab_sum_ext, file = "outputs/epl24_wet_sum_ext.csv")
+  write.csv(epl24_sum_ext, file = "outputs/epl24_wet_sum_ext.csv")
  
- epl24ab_sum_prpext <- epl24ab_sum_ext %>%
+ epl24_sum_prpext <- epl24_sum_ext %>%
   filter(hgm_simple != "Total") %>%
   mutate(across(c(WP, MP, PP, NP), ~ round(.x / Total, 3))) %>%
   select(hgm_simple, WP, MP, PP, NP)
  
  # export a csv of results - PROPORTIONAL EXTENT  (km) of EPL 18 per slope zone
-   write.csv(epl24ab_sum_prpext, file = "outputs/epl24_wet_sum_prp.csv")
+   write.csv(epl24_sum_prpext, file = "outputs/epl24_wet_sum_prp.csv")
 ```
 
 #### **Make graphs for NBA**
@@ -284,7 +294,7 @@ wet_type_24 <- wet_tb %>%
 library(nbaR)
 
 # Use NBA package to make EPL graph (need high res output for booklet)
-EPL24count <- epl24ab_sum %>%
+EPL24count <- epl24_sum %>%
     rename(`Well Protected` = WP, 
            `Moderately Protected` = MP, 
            `Poorly Protected` = PP, 
@@ -312,7 +322,7 @@ ggsave(
 
 # graphs for extent per slope zone per epl category
 
-EPL24ext <- epl24ab_sum_ext %>%
+EPL24ext <- epl24_sum_ext %>%
     rename(`Well Protected` = WP, 
            `Moderately Protected` = MP, 
            `Poorly Protected` = PP, 
@@ -340,10 +350,10 @@ ggsave(
 
 # Make a line plot of EPL Index using 2018 and 2014 timepoints - request Natasha to impve this or add to package.
 
-EPLI <- epl24ab_sum %>%
+EPLI <- epl24_sum %>%
   select(hgm_simple, EPLI) %>% 
   rename(EPLI24 = EPLI) %>%
-   left_join(epl18ab_sum, by ="hgm_simple") %>%
+   left_join(epl18_sum, by ="hgm_simple") %>%
    rename(EPLI18 = EPLI) %>%
    rename(HGMzone = hgm_simple) %>%
   select(HGMzone,EPLI18, EPLI24) %>%
