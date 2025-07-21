@@ -20,9 +20,9 @@ Protection Level is an indicator developed in South Africa that measures the rep
 
 -   Poorly Protected: 5% to 49% of PA target within the PA network; and A&B condition wetlands contribute 100%, C condition wetlands contribute 50%, D condition wetlands contribute 30% and E&F condition wetlands contribute 10%
 
--   Not Protected: less than 5% of PA target within the PA network; and A&B condition rivers contribute 100%, C condition rivers contribute 50%, D condition rivers contribute 30% and E&F condition rivers contribute 10%
+-   Not Protected: less than 5% of PA target within the PA network; and A&B condition wetlands contribute 100%, C condition wetlands contribute 50%, D condition wetlands contribute 30% and E&F condition wetlands contribute 10%
 
-The PA target was historically set at 20% for freshwater ecosystems, but with the adoption of the 30% targets for Target 3 of the Global Biodiversity Framework - the PA target was increased to 30% in the EPL calculations (previous time points (2018) were recalculated using this higher target). Ecosystem condition data (based on Wet Health scores) for each time point allow for only good condition river reaches to be considered representative for Well Protected status; while for MP PP and NP the condition of the rivers is used to calculate their contribution to meeting targets - higher intergrity / condition rivers contribute more to meeting PA targets than low integrity / condition rivers.
+The PA target was historically set at 20% for freshwater ecosystems, but with the adoption of the 30% targets for Target 3 of the Global Biodiversity Framework - the PA target was increased to 30% in the EPL calculations (previous time points (2018) were recalculated using this higher target). Ecosystem condition data (based on Wet Health scores) for each time point allow for only good condition wetlands to be considered representative for Well Protected status; while for MP, PP and NP the condition of the wetlands is used to calculate their contribution to meeting targets - higher intergrity / condition wetlands contribute more to meeting PA targets than low integrity / condition wetlands.
 
 #### **Results:**
 
