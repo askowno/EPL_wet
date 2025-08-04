@@ -32,4 +32,6 @@ Summary table - count of wetland ecosystem types per HGM zone per EPL category [
 
 Summary table - extent of wetland per HGM zone per EPL category [epl24_wet_sum_ext.csv](outputs/epl24_rwet_sum_ext.csv)
 
-![Ecosystem Protection Level for Wetlands 2025 (count of ecosystem types per EPL category)](outputs/epl24_wet_bar_plot_count.jpeg)
+| EPL 2024 - types | EPL 2024 - extent |
+|----|----|
+| ![](outputs/epl24_wet_bar_plot_count.jpeg) | ![](outputs/epl24_wet_bar_plot_ext.jpeg) |
