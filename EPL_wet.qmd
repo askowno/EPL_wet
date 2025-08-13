@@ -312,14 +312,14 @@ epl24_bar_plot_count <- nba_plot(EPL24count,
 epl24_bar_plot_count <- epl24_bar_plot_count +
   theme(
     legend.position = "bottom",             # keep it at the bottom
-    legend.margin = margin(l = -45, r = -5, t = -5, b = -5)) 
+    legend.margin = margin(l = -50, r = -5, t = -5, b = -5)) 
 
 #export the graph
 ggsave(
   filename = "outputs/epl24_wet_bar_plot_count.jpeg", # File name
   plot = epl24_bar_plot_count,                  # Plot object
   device = "jpeg",                        # File format
-  width = 16, height = 12, units = "cm",   # Dimensions
+  width = 9, height = 7, units = "cm",   # Dimensions
   dpi = 300                               # Resolution
 )
 
@@ -345,14 +345,14 @@ epl24_bar_plot_ext <- nba_plot(EPL24ext,
 epl24_bar_plot_ext <- epl24_bar_plot_ext +
   theme(
     legend.position = "bottom",             # keep it at the bottom
-    legend.margin = margin(l = -45, r = -5, t = -5, b = -5))
+    legend.margin = margin(l = -50, r = -5, t = -5, b = -5))
 
 #export the graph
 ggsave(
   filename = "outputs/epl24_wet_bar_plot_ext.jpeg", # File name
   plot = epl24_bar_plot_ext,                   # Plot object
   device = "jpeg",                        # File format
-  width = 16, height = 12, units = "cm",   # Dimensions
+  width = 9, height = 7, units = "cm",   # Dimensions
   dpi = 300                               # Resolution
 )
 
@@ -391,14 +391,12 @@ EPLI <- epl24_sum %>%
   theme(legend.title = element_blank())
   
    
-  epli_line_plot
-  
   #export the graph
 ggsave(
-  filename = "outputs/epli_riv_line_plot.jpeg", # File name
+  filename = "outputs/epli_wet_line_plot.jpeg", # File name
   plot = epli_line_plot,                   # Plot object
   device = "jpeg",                        # File format
-  width = 16, height = 12, units = "cm",   # Dimensions
+  width = 14, height = 9, units = "cm",   # Dimensions
   dpi = 300                               # Resolution
 )
 ```

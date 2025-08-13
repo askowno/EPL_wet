@@ -37,3 +37,9 @@ Summary table - extent of wetland per HGM zone per EPL category [epl24_wet_sum_e
 | EPL 2024 - types | EPL 2024 - extent |
 |------------------------------------|------------------------------------|
 | ![](outputs/epl24_wet_bar_plot_count.jpeg) | ![](outputs/epl24_wet_bar_plot_ext.jpeg) |
+
+EPL Index
+
+| EPLI 2018 - 2024                     |
+|--------------------------------------|
+| ![](outputs/epli_wet_line_plot.jpeg) |
