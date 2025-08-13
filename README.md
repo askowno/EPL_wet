@@ -16,22 +16,24 @@ Protection Level is an indicator developed in South Africa that measures the rep
 
 -   Well Protected: 100% of the PA target within PA network; and only A&B condition wetlands contribute
 
--   Moderately Protected: 50% to 99% of PA target within the PA network; and A&B condition wetlands contribute 100%, C condition wetlands contribute 50%, D condition wetlands contribute 30% and E&F condition wetlands contribute 10%
+-   Moderately Protected: 50% to 99% of PA target within the PA network; and A&B condition wetlands contribute 100%, C & D condition wetlands contribute 30%, E&F condition wetlands contribute 10%
 
--   Poorly Protected: 5% to 49% of PA target within the PA network; and A&B condition wetlands contribute 100%, C condition wetlands contribute 50%, D condition wetlands contribute 30% and E&F condition wetlands contribute 10%
+-   Poorly Protected: 5% to 49% of PA target within the PA network; and A&B condition wetlands contribute 100%, C & D condition wetlands contribute 30%, E&F condition wetlands contribute 10%
 
--   Not Protected: less than 5% of PA target within the PA network; and A&B condition wetlands contribute 100%, C condition wetlands contribute 50%, D condition wetlands contribute 30% and E&F condition wetlands contribute 10%
+-   Not Protected: less than 5% of PA target within the PA network; and A&B condition wetlands contribute 100%, C & D condition wetlands contribute 30%, E&F condition wetlands contribute 10%
 
-The PA target was historically set at 20% for freshwater ecosystems, but with the adoption of the 30% targets for Target 3 of the Global Biodiversity Framework - the PA target was increased to 30% in the EPL calculations (previous time points (2018) were recalculated using this higher target). Ecosystem condition data (based on Wet Health scores) for each time point allow for only good condition wetlands to be considered representative for Well Protected status; while for MP, PP and NP the condition of the wetlands is used to calculate their contribution to meeting targets - higher intergrity / condition wetlands contribute more to meeting PA targets than low integrity / condition wetlands.
+The PA target was historically set at 20% for freshwater ecosystems, but with the adoption of the 30% targets for Target 3 of the Global Biodiversity Framework - the PA target was increased to 30% in the EPL calculations (previous time points (2018) were recalculated using this higher target). Ecosystem condition data (based on Wet Health scores) for each time point allow for only good condition wetlands to be considered representative for Well Protected status; while for MP, PP and NP the condition of the wetlands is used to calculate their contribution to meeting targets - higher integrity / condition wetlands contribute more to meeting PA targets than low integrity / condition wetlands.
 
 #### **Results:**
 
 Overall per-ecosystem type EPL results [epl_wet_metrics_per_type.csv](outputs/epl_wet_metrics_per_type.csv)
 
-Summary table - count of wetland ecosystem types per HGM zone per EPL category [epl24_wet_sum_count.csv](https://github.com/askowno/EPL_riv/blob/main/outputs/epl24_wet_sum_count.csv)
+Summary table - count of wetland ecosystem types per HGM zone per EPL category [epl24_wet_sum_count.csv](https://github.com/askowno/EPL_riv/blob/main/outputs/epl24_wet_sum_count.csv) 19/80 NP (25%); 60/80 PP or NP (75%)
 
 Summary table - extent of wetland per HGM zone per EPL category [epl24_wet_sum_ext.csv](outputs/epl24_rwet_sum_ext.csv)
 
+15% NP but 88% PP or NP
+
 | EPL 2024 - types | EPL 2024 - extent |
-|----|----|
+|------------------------------------|------------------------------------|
 | ![](outputs/epl24_wet_bar_plot_count.jpeg) | ![](outputs/epl24_wet_bar_plot_ext.jpeg) |
