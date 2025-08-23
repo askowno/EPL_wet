@@ -8,9 +8,11 @@ August 2025
 
 #### **Summary**
 
-This repository contains a workflow that results in the NBA 2025 Ecosystem Protection Level indicators for Wetland Ecosystems of South Africa following the methods of van [Deventer et al., 2019.](http://hdl.handle.net/20.500.12143/5847)
+This repository contains a workflow that results in the NBA 2025 Ecosystem Protection Level indicators for Wetland Ecosystems of South Africa.
 
-The Quarto document [EPL_wet.qmd](https://github.com/askowno/EPL_riv/blob/main/EPL_wet.qmd) describes the import of Protected Areas time series data - prepared in ARCPRO by SANBI - based on the South African Protected Areas Database (SAPAD) 2024Q4 (Department of Forestry Fisheries and Environment) and the import of the South African wetland database (version 20250823) prepared by SANBI. The data were combined (intersection) using the sf package in R and summarised using the tidyverse.
+The Quarto document [EPL_wet.qmd](https://github.com/askowno/EPL_riv/blob/main/EPL_wet.qmd) describes the import of Protected Areas time series data - prepared in ARCPRO by SANBI - based on the South African Protected Areas Database (SAPAD) 2024Q4 (Department of Forestry Fisheries and Environment) and the import of the South African wetland database (version 20250823) prepared by SANBI. The data set covers 82 inland wetland ecosystem types in South Africa and includes per-feature ecosystem condition data in six categories (A-F) and Present Ecological State (PES) scores developed using an implementation of the WET-Health 2.0 framework ([Macfarlane et. al., 2020](https://frcsa.org.za/wp-content/uploads/2020/10/TT-820_Final-web.pdf)) by Nacelle Collins (Collins et al., in prep).
+
+The data were combined (intersection) using the sf package in R and summarised using the tidyverse.
 
 Protection Level is an indicator developed in South Africa that measures the representation of ecosystem types within the PA network. The extent of each ecosystem type within the PA network is expressed as a proportion of the total extent. Four classes of Ecosystem Protection Level which is calculated per ecosystem type (n= 82).
 
