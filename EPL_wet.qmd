@@ -9,17 +9,24 @@ format: html
 # Add packages: 
 library(sf)
 library(tidyverse)
+library(stringr)
+library(PROJ)
+library(purrr)
 
-# Add data
+# Read PAs (projected layer)
+pa <- st_read("C:/Users/skownoa/Dropbox/NBAwork/NLC_change/NLC_Change.gdb",
+              layer = "SANBI_PA_2024Q4_Mar2025")
 
-wetlands <- st_read("C:/Users/skownoa/Dropbox/NBAwork/Wetlands/wetl_NBA_20250811.gpkg")
-wetlands <- wetlands %>% mutate(fid = row_number())
+# Read Wetlands (unprojected layer)
+wetlands <- st_read("C:/Users/skownoa/Dropbox/NBAwork/Wetlands/wetl_NBA_20250823.gpkg",
+                    layer = "wetl_nba_20250823")
 
-pa <- st_read("C:/Users/skownoa/Dropbox/NBAwork/NLC_change/NLC_Change.gdb", layer = "SANBI_PA_2024Q4_Mar2025") 
+# Reproject wetlands to PA's CRS
+wetlands <- st_transform(wetlands, crs = st_crs(pa))
 
-#ensure it uses proj =  wgs84 aea cm 25 -24 -33
-# st_crs(wetlands)
-# st_crs(pa)
+# add fid for each feature and ensure area_m2 is correct
+wetlands <- wetlands %>% mutate(fid = row_number()) %>% mutate(area_m2 = as.numeric(st_area(geom))) 
+
 ```
 
 #### Clean up input data
@@ -31,21 +38,23 @@ options(scipen = 999)
 pa2018 <- subset(pa, DECL_YEAR <  2019 & UNDECL_YEA >2018)
 pa2024 <- subset(pa, DECL_YEAR <  2025 & UNDECL_YEA >2024)
 
-# Wetlands - cleanup data 
-
-## Clean up wetlands  : there are 215 NA in New_name (type) filter these out (future version will name them), make NAs in NBAPES25 into "DD", add zone column  by finding text after _ in the New_name. 
-
-
-
-# simplistic clean up drops 18 000 rows - so if this can be cleaned up it might help things 
+## Clean up this version 1) fill in missing type names by combining "Bioregion" and "_" and "hgm1" , and EC18VEG has a few "AA" change to "A". 
 wet <- wetlands %>%
-  # add area column 
-  mutate(area_m2 = as.numeric(st_area(geom))) %>%
-  # remove rows with NA in New_name (do  sum(is.na(wetlands$type)) to check numer there are 215)
-  mutate(EC22ALL = ifelse(EC22ALL == "0", NA, EC22ALL), 
-         EC18ALL = ifelse(EC18ALL == "0"| EC18ALL =="fix" | EC18ALL =="#DIV/0!", NA, EC18ALL)) %>%
-  filter(if_all(c(type, EC22ALL, EC18ALL), ~ !is.na(.x))) 
+  # fix error in EC18VEG
+  mutate(EC18VEG = ifelse(EC18VEG == "AA", "A", EC18VEG)) %>%
+  # fix NA in type by combing bior and hgm1
+  mutate(type = ifelse(type == "" | is.na(type), str_c(bioregion, hgm1, sep = "_") , type)) %>%
+  # limit max PES to 100 and min to 0 (to ensure later use of values works) 
+  mutate(across(starts_with("PES"), ~ round(pmin(pmax(., 0), 100)))) %>%
+# drop M and Z coordinates for later computations like extract and hulls
+  st_zm(drop = TRUE, what = "ZM")
 
+# make a simple table of TYPE and HGM to join with results later 
+  type_hgm_tb <- wet_tb %>% 
+    select(type, hgm1) %>% 
+    distinct(type, .keep_all = TRUE) %>% 
+    rename(hgm = hgm1)
+ 
 
 ```
 
@@ -79,8 +88,7 @@ wet_tb <- wet %>%
   left_join(pa18_wet, by = "fid") %>%
   mutate(across(c(fid_area24pa, fid_area18pa), ~ replace_na(.x, 0)))
 
-# make a simple table of TYPE and HGM to join with results later 
-  type_hgm_tb <- wet_tb %>% select(type, hgm) %>% distinct(type, .keep_all = TRUE)
+
     
  
 

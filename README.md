@@ -35,7 +35,7 @@ Summary table - extent of wetland per HGM zone per EPL category [epl24_wet_sum_e
 15% NP but 88% PP or NP
 
 | EPL 2024 - types | EPL 2024 - extent |
-|------------------------------------|------------------------------------|
+|----|----|
 | ![](outputs/epl24_wet_bar_plot_count.jpeg) | ![](outputs/epl24_wet_bar_plot_ext.jpeg) |
 
 EPL Index
